@@ -148,6 +148,7 @@ class DatabaseReader:
                     len(fake_df)) * 0.01
                 fake_df['low'] = fake_df[['close', 'open']].min(axis=1) - fake_df['close'] * np.random.rand(
                     len(fake_df)) * 0.01
+                fake_df['ret'] = fake_df['close'].pct_change().fillna(0)
                 fake_df['high_limit'] = fake_df['close']
                 fake_df['low_limit'] = fake_df['close']
                 fake_df['volume'] = (np.random.rand(len(fake_df)) + 1) * 1e8
