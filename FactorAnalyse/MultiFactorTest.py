@@ -13,13 +13,14 @@ import statsmodels.api as sm
 from scipy import stats
 # =============================================================================
 # 下面的路径是用来import叶文轩写的DataPreProcessing，可以换自己的路径
+# 也可以直接把工作路径改到"D:\QTAML2020\FactorAnalyse"
 # =============================================================================
-path_wx='d://QTA/project//code//qtaYWX'
-path_preprocessing ='d://QTA/project//code//PreProcessing'
-sys.path.append(path_wx)
-sys.path.append(path_preprocessing)
+# path_wx='d://QTAML2020//FactorAnalyse'
+# path_preprocessing ='d://QTA/project//code//PreProcessing'
+# sys.path.append(path_wx)
+# sys.path.append(path_preprocessing)
 # import FactorAnalyse
-from FactorAnalyse.DataPreProcessing import DeExtremeMethod,NeutralizeMethod,StandardizeMethod
+from DataPreProcessing import DeExtremeMethod,NeutralizeMethod,StandardizeMethod
 # from data.DBReader import DatabaseReader
 # from PreProcessing import get_daily_factor_preprocessed
 
