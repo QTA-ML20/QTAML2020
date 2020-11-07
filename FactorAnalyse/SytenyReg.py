@@ -7,31 +7,22 @@ Created on Mon Oct 26 19:16:05 2020
 import pandas as pd
 import numpy as np
 import statsmodels.formula.api as smf
-import pdb
-
-# 捏的股票因子数据
-stock_list = [str(i+1).zfill(6)+'.sz' for i in range(300)]
-date_list = pd.date_range('2020-01-01', '2020-03-31')
-factor_list = ['factor'+str(i+1) for i in range (10)]
-l = []
-
-for date in date_list:
-    df = pd.DataFrame(np.random.rand(len(stock_list), len(factor_list)), columns=factor_list)
-    df['datetime'] = date
-    df['code'] = stock_list
-    l.append(df)  
-df = pd.concat(l)
+import sys
+sys.path.append('..')
+from data.DBReader import DatabaseReader as dbr
 
 class SytenyReg():
-    '''
-    因子共线性回归
-    '''
-    def __init__(self, p_value, retro, df):
-        self.retro = retro
-        self.df = df
-        self.p_value = p_value
+    @classmethod
+    def regression(cls, df, factor, p_value=0.05, retro=60):  
+        '''
+        因子共线性回归
+        :param: df:包含股票，日期及因子暴露的数据
+        :param: factor: 所关心的与其他指标有无共线性的指标
+        :params: p_value:检验所用显著性水平，默认值为0.05
+        :param: retro:相关性检验所用数据回溯期数，如果没有输入，默认为60
+        :return: corr_factors:与所关心指标有共线性的指标, 用户自行选择进行后续操作
         
-    def regression(self, p_value, retro, df):  
+        '''
         factors = list(df)
         dates = list(set(df['datetime']))
         dates.sort()
@@ -41,22 +32,26 @@ class SytenyReg():
         factors.remove('datetime')
         
         corr_factors = []
-        for factor in factors:
-            temp = factors.copy()
-            temp.remove(factor)
-            formula = '+'.join(temp)
-            formula = str(factor)+' ~ '+formula
-            model = smf.ols(formula = formula, data=df_curr[factors]).fit()
-            x = model.pvalues
-            nonzero = x[x<p_value]
-            if('Intercept' in list(nonzero.index)):
-                nonzero = nonzero.drop('Intercept')
-            if(len(nonzero)!=0):
-                for i in range(len(nonzero)):
-                    corr_factors.append(str(factor)+ '+' +str(nonzero.index[i]))
-                
-def main():
-    Reg = SytenyReg(0.05, 60, df)
+        temp = factors.copy()
+        temp.remove(factor)
+        formula = '+'.join(temp)
+        formula = str(factor)+' ~ '+formula
+        model = smf.ols(formula = formula, data=df_curr[factors]).fit()
+        x = model.pvalues
+        nonzero = x[x<p_value]
+        if('Intercept' in list(nonzero.index)):
+            nonzero = nonzero.drop('Intercept')
+        if(len(nonzero)!=0):
+            for i in range(len(nonzero)):
+                corr_factors.append(nonzero.index[i])
+        return(corr_factors)       
     
 if __name__ == '__main__':
-    main() 
+    start_date = '2020-01-01'
+    end_date = '2020-03-31'
+    p_value=0.05
+    stock_list = list(dbr.get_index_weight('000300.XSHG',start_date, end_date)['code'])
+    #假设是这些因子，有数据再改
+    factor_list = ['factor'+str(i+1) for i in range (10)]
+    df = dbr.get_daily_factor(stock_list,factor_list,start_date,end_date)
+    corr_factors = SytenyReg.regression(df,'factor8')

@@ -8,6 +8,8 @@ Created on Sun Oct 25 14:44:31 2020
 import pandas as pd
 import numpy as np
 from scipy import stats
+import sys
+sys.path.append('..')
 from data.DBReader import DatabaseReader as dbr
 
 
@@ -26,20 +28,20 @@ class SameClassFacAna():
         同类因子合成
         :param: factor1: 需要合成的因子1
         :param: factor2: 需要合成的因子2
-        :param: method：选用的合成方法
+        :param: method：选用的合成方法,默认值为IC
         '''
     #IC&IR的矩阵 code*datetime
         pass
     
     @classmethod
-    def cor_test(cls, class_of_factor, key, df, p_value=0.05, retro=60):
+    def cor_test(cls, class_of_factor, key, df, retro=60):
         '''
         同类因子相关性检验
-        :param: p_value:相关性检验所用显著性水平,如果没有输入，默认为0.05
         :param: class_of_factor: 记载因子分类的字典
         :param: key:所关心的因子类别
         :param: retro:相关性检验所用数据回溯期数，如果没有输入，默认为60
         :param: df:包含股票，日期及因子暴露的数据
+        :return: 返回计算出的各因子相关p值矩阵（上三角）
         '''
         factors = class_of_factor[key]
         remains = factors+['datetime','code']
@@ -82,8 +84,24 @@ class SameClassFacAna():
         total_t = total_mean/total_std
         total_p=2*(1-stats.t.cdf(total_t,retro-1))
         return total_p
-        
-
+    
+    @classmethod
+    def cor_factor(cls,class_of_factor, key, total_p, p_value=0.05):
+        '''
+        输出相关性显著的因子对
+        :params: class_of_factor:字典，记录因子分类情况
+        :params: key：关心的因子类型
+        :params: total_p:记录各因子对之间相关p值的矩阵
+        :params: p_value:检验所用显著性水平，默认值为0.05
+        :return: 返回显著相关的因子对(factor1, factor2)
+        '''
+        result=[]
+        factors=class_of_factor[key]
+        for i in range(len(total_p)):
+            for j in range(i+1,len(total_p)):
+                if(total_p[i,j]<p_value):
+                    result.append([factors[i],factors[j]])
+        return result
     
 if __name__ == '__main__':
     #因子分类字典，后续更新
@@ -96,13 +114,10 @@ if __name__ == '__main__':
     #假设是这些因子，有数据再改
     factor_list = ['factor'+str(i+1) for i in range (10)]
     df = dbr.get_daily_factor(stock_list,factor_list,start_date,end_date)
-    results = []
     for key in class_of_factor.keys():
-        results.append(SameClassFacAna.cor_test(class_of_factor, key, df, 0.05, 60))
-    
-    #有显著相关性的进入因子合成
-    for result in results:
-        for i in range(len(result)):
-            for j in range(i+1,len(result)):
-                if(result[i,j]<p_value):
-                    SameClassFacAna.factor_compose(result[i],result[j],'IC')
+        resultp = SameClassFacAna.cor_test(class_of_factor, key, df, 60)
+        results = SameClassFacAna.cor_factor(class_of_factor, key, resultp, 0.05)
+        if(len(results)!=0):
+            for result in results:
+                SameClassFacAna.factor_compose(result[0],result[1])
+            
