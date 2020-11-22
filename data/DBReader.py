@@ -209,12 +209,12 @@ class DatabaseReader:
         :param index_code: 股票指数代码，目前只支持000300.XSHG 和 000905.XSHG
         :return:
         """
-        if index_code in ["沪深300", "hs300", "300", "HS", "000300.SH"]:
-            index_code = "000300.XSHG"
+        if index_code in ["沪深300", "hs300", "300", "HS", "000300.SH", "000300.XSHG"]:
+            index_code = "000300.SH"
 
-        elif index_code in ["中证500", "zz500", "500", "000905.SH"]:
-            index_code = "000905.XSHG"
-        assert index_code in ['000300.XSHG', '000905.XSHG']
+        elif index_code in ["中证500", "zz500", "500", "000905.SH", "000905.XSHG"]:
+            index_code = "000905.SH"
+        assert index_code in ['000300.SH', '000905.SH']
 
         # 将输入的时间转换成 datetime 类型，这样就可以直接和数据库里面的日期 比较
         start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)

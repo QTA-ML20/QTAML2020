@@ -202,8 +202,7 @@ class QuantDataApi:
     @classmethod
     def get_period_quote_timeseries(cls, code_list, start_date, end_date):
         df = DatabaseReader.get_daily_quote(code_list, start_date, end_date)
-        close_df = df.pivot(index='datetime', columns='code', values='close').fillna(method='ffill')
-        ret_df = close_df.pct_change().fillna(0)
+        ret_df = df.pivot(index='datetime', columns='code', values='ret')
         return ret_df
 
     @classmethod
