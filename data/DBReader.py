@@ -51,12 +51,7 @@ class DatabaseReader:
             trading_days = pd.DatetimeIndex(trading_days)
             return trading_days
         else:
-            fake_data = pd.date_range('2010-01-01', '2020-10-23')
-            if start_date is not None:
-                fake_data = fake_data[fake_data>=start_date]
-            if end_date is not None:
-                fake_data = fake_data[fake_data<=end_date]
-            return fake_data
+            return None
 
     @classmethod
     # @lru_cache(maxsize=1000)
@@ -97,15 +92,7 @@ class DatabaseReader:
             pd_data = pd.DataFrame(db_data)
             return pd_data
         else:
-            l = []
-            date_list = cls.get_all_trade_days(start_date, end_date)
-            for date in date_list:
-                fake_df = pd.DataFrame(np.random.rand(len(code_list), len(factor_list)), columns=factor_list)
-                fake_df['code'] = code_list
-                fake_df['datetime'] = date
-                l.append(fake_df)
-            fake_data = pd.concat(l)
-            return fake_data
+            return None
 
     @classmethod
     # @lru_cache(maxsize=1000)
@@ -138,27 +125,7 @@ class DatabaseReader:
             pd_data = pd.DataFrame(db_data)
             return pd_data
         else:
-            l = []
-            date_list = cls.get_all_trade_days(start_date, end_date)
-            for code in code_list:
-                fake_df = pd.DataFrame(np.random.rand(len(date_list)), columns=['close'])
-                fake_df['close'] = ((np.random.randn(len(date_list))*0.005+1.0003).cumprod()) * 60 * np.random.rand()
-                fake_df['open'] = fake_df['close'] + fake_df['close'] * (np.random.rand(len(fake_df)) - 0.5) * 0.02
-                fake_df['high'] = fake_df[['close', 'open']].max(axis=1) + fake_df['close'] * np.random.rand(
-                    len(fake_df)) * 0.01
-                fake_df['low'] = fake_df[['close', 'open']].min(axis=1) - fake_df['close'] * np.random.rand(
-                    len(fake_df)) * 0.01
-                fake_df['ret'] = fake_df['close'].pct_change().fillna(0)
-                fake_df['high_limit'] = fake_df['close']
-                fake_df['low_limit'] = fake_df['close']
-                fake_df['volume'] = (np.random.rand(len(fake_df)) + 1) * 1e8
-                fake_df['money'] = (np.random.rand(len(fake_df)) + 1) * 1e9
-                fake_df['code'] = code
-                fake_df['datetime'] = date_list
-                fake_df['paused'] = False
-                l.append(fake_df)
-            fake_data = pd.concat(l)
-            return fake_data
+            return None
 
     @classmethod
     # @lru_cache(maxsize=1000)
@@ -229,18 +196,7 @@ class DatabaseReader:
             pd_data = pd.DataFrame(db_data)
             return pd_data
         else:
-            l = []
-            date_list = cls.get_all_trade_days(start_date, end_date)
-            code_list = [str(i+1).zfill(6)+'.XSHE' for i in range(300)]
-            for date in date_list:
-                fake_df = pd.DataFrame(np.random.rand(len(code_list)), columns=('weight',))
-                fake_df = fake_df/fake_df.sum()  # 归一化
-                fake_df['code'] = code_list
-                fake_df['datetime'] = date
-                l.append(fake_df)
-            fake_data = pd.concat(l)
-            fake_data['index_code'] = index_code
-            return fake_data
+            return None
 
     @classmethod
     # @lru_cache(maxsize=1000)
@@ -313,7 +269,8 @@ class DatabaseReader:
             for item in field_list:
                 project_field.update({item: 1})
         else:
-            for item in ['industry_sw1', 'industry_zx1', 'name', 'listed_date', 'is_st']:
+            for item in ['industry_zx1', 'name', 'listed_date', 'is_st',
+                        'expired_date', 'industry_zx1_code', 'industry_zx1_name']:
                 project_field.update({item: 1})
 
         collection = DatabaseObj.collection_stock_info
@@ -322,19 +279,7 @@ class DatabaseReader:
             pd_data = pd.DataFrame(db_data)
             return pd_data
         else:
-            l = []
-            date_list = cls.get_all_trade_days(start_date, end_date)
-            for code in code_list:
-                fake_df = pd.DataFrame([False]*len(date_list), columns=['is_st'])
-                fake_df['industry_sw1'] = ['申万银行', '申万计算机', '申万通信'][int(np.ceil(np.random.rand() * 3) - 1)]
-                fake_df['industry_zx1'] = ['中信银行', '中信计算机', '中信通信'][int(np.ceil(np.random.rand() * 3) - 1)]
-                fake_df['name'] = ['视觉中国', '中国建筑', '海康威视'][int(np.ceil(np.random.rand() * 3) - 1)]
-                fake_df['listed_date'] = pd.to_datetime('1994-09-27')
-                fake_df['code'] = code
-                fake_df['datetime'] = date_list
-                l.append(fake_df)
-            fake_data = pd.concat(l)
-            return fake_data
+            return None
 
     @classmethod
     def update_daily_factor(cls, df, factor_name):
@@ -383,6 +328,6 @@ class DatabaseReader:
 
 
 if __name__ == "__main__":
-    a=DatabaseReader.get_minute_quote(['000001.XSHE','000002.XSHE'],
+    a=DatabaseReader.get_daily_factor(['000001.SZ','600001.SH'],
                                      '2020-01-01', '2020-01-05')
 
