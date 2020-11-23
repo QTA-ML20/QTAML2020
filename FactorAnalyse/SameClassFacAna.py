@@ -13,7 +13,6 @@ sys.path.append('..')
 from data.DBReader import DatabaseReader as dbr
 from MultiFactorTest import FactorTestOneDay, get_IC_FactorReturn
 
-
 class SameClassFacAna():
     
 #    def __init__(self, class_of_factor, key, df, p_value=0.05, retro=60):

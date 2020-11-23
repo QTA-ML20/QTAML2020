@@ -1,4 +1,6 @@
 config.py
 .ipynb_checkpoints/
 __pycache__/
+.idea/
+.vscode/
 /data/config.py
