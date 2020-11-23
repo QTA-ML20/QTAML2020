@@ -90,7 +90,7 @@ class DatabaseReader:
         db_data = list(collection.find({"$and": query}, project_field))
         if len(db_data) > 0:
             pd_data = pd.DataFrame(db_data)
-            return pd_data
+            return pd_data.drop_duplicates()
         else:
             return None
 
@@ -194,7 +194,7 @@ class DatabaseReader:
         db_data = list(collection.find({"$and": query}, project_field))
         if len(db_data) > 0:
             pd_data = pd.DataFrame(db_data)
-            return pd_data
+            return pd_data.dropna().drop_duplicates()
         else:
             return None
 
@@ -237,12 +237,14 @@ class DatabaseReader:
 
     @classmethod
     # @lru_cache(maxsize=1000)
-    def get_stock_info(cls, code_list, start_date, end_date, field_list=None):
+    def get_stock_info(cls, code_list, start_date, end_date, field_list=None, show_all=False):
         """
         通过 wss 时间切片的方法，从数据库中读取 某一天 时间切片上所有股票的 相关因子数据
         :param start_date: 输入指定的开始日期
         :param end_date:  输入指定的结束日期
         :param code_list: 返回特定的几只股票的数据
+        :param field_list: 指定字段
+        :param show_all:  False：仅返回当前未退市以及已经上市的股票， True：返回所有
         :return:
         """
         if field_list is not None:
@@ -277,6 +279,8 @@ class DatabaseReader:
         db_data = list(collection.find({"$and": query}, project_field))
         if len(db_data) > 0:
             pd_data = pd.DataFrame(db_data)
+            pd_data = pd_data[(pd_data['datetime'] >= pd_data['listed_date']) &
+                              (pd_data['datetime'] <= pd_data['expired_date'])]
             return pd_data
         else:
             return None

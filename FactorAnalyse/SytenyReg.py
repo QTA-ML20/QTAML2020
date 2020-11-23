@@ -48,10 +48,12 @@ class SytenyReg():
     
 if __name__ == '__main__':
     start_date = '2020-01-01'
-    end_date = '2020-03-31'
+    end_date = '2020-06-30'
     p_value=0.05
-    stock_list = list(dbr.get_index_weight('000300.XSHG',start_date, end_date)['code'])
+    stock_list = list(dbr.get_index_weight('000300.SH',start_date, end_date)['code'])
     #假设是这些因子，有数据再改
-    factor_list = ['factor'+str(i+1) for i in range (10)]
+    factor_list = ["pe_ratio", "pb_ratio", "circulating_cap"]
     df = dbr.get_daily_factor(stock_list,factor_list,start_date,end_date)
-    corr_factors = SytenyReg.regression(df,'factor8')
+    corr_factors = SytenyReg.regression(df, 'circulating_cap')
+
+    print(corr_factors)
