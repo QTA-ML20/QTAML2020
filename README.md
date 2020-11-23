@@ -1,4 +1,18 @@
-# QTAML2020
+# 机器学习是合成因子的有效途径吗？
 
-[工作时间统计](https://docs.qq.com/sheet/DUmF3Z0ZrTE9lTWla)  
- [会议记录](https://github.com/QTA-ML20/QTAML2020/blob/main/meeting_log)
+## 1. 简介
+
+### 1.1 目标 
+
+根据量价数据，使用tree-based或者线性回归等机器学习模型合成新因子，通过传统因子投资的流程回测检验新因子有效性。在有效的前提下检验机器学习模型的可解释性。  
+
+### 1.2 数据库
+
+涵盖全A股从2005年至2020年8月的日频行情、行业分类、基本信息、[常用因子](https://www.joinquant.com/help/api/help?name=JQData#%E5%B8%82%E5%80%BC%E6%95%B0%E6%8D%AE%EF%BC%88%E6%AF%8F%E6%97%A5%E6%9B%B4%E6%96%B0%EF%BC%89)，沪深300与中证500指数权重数据。因子数据来源是聚宽，其他数据来源是Wind。  
+
+所有数据存放在MongoDB之中。
+
+## 2. 流程
+
+![](https://github.com/QTA-ML20/QTAML2020/blob/main/%E6%B5%81%E7%A8%8B%E5%9B%BE.png)
+
