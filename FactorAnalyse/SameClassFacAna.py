@@ -11,7 +11,7 @@ from scipy import stats
 import sys
 sys.path.append('..')
 from data.DBReader import DatabaseReader as dbr
-
+from MultiFactorTest import FactorTestOneDay, get_IC_FactorReturn
 
 class SameClassFacAna():
     
@@ -22,15 +22,31 @@ class SameClassFacAna():
 #        self.retro = retro
 #        self.df = df
     @classmethod
-    def factor_compose(cls,factor1, factor2, method='IC'):
+    def factor_compose(cls, factor1, factor2, factor_df, return_df, method='IC'):
         '''
         同类因子合成
         :param: factor1: 需要合成的因子1
         :param: factor2: 需要合成的因子2
         :param: method：选用的合成方法,默认值为IC
+        :return: 返回以IC值为权重加权合成的新因子值(dataframe)
         '''
-    #IC&IR的矩阵 code*datetime
-        pass
+        if method == 'IC':
+            factor_df = factor_df[['code', factor1, factor2]] #取对应因子的数据
+            stock_return_df = return_df[['code','ret']] # 取股票的return
+            # 转换为每日一个dataframe的形式
+            factor_date_dict = dict(list(factor_df.groupby('date',as_index=False)))
+            stock_return_shift_df = stock_return_df.iloc[1:,:] # 往后推一天
+            # 转换为每日一个dataframe的形式
+            stock_return_shift_dict = dict(list(stock_return_shift_df.groupby('date',as_index=False)))
+            # 计算IC值
+            IC_df_1,factor_return_df = get_IC_FactorReturn(factor_date_dict,stock_return_shift_dict)
+            IC_df_1.rename(columns={'factor1': 'weight1', 'factor2': 'weight2'}, inplace=True)
+            # 合并并用IC值加权
+            factor_compose = pd.merge(factor_df, IC_df_1, on='code')
+            composed_factor = factor_compose['factor1']*factor_compose['weight1']
+                             + factor_compose['factor2']*factor_compose['weight2']
+            
+        return composed_factor
     
     @classmethod
     def cor_test(cls, class_of_factor, key, df, retro=60):
@@ -112,11 +128,15 @@ if __name__ == '__main__':
     stock_list = list(dbr.get_index_weight('000300.XSHG',start_date, end_date)['code'])
     #假设是这些因子，有数据再改
     factor_list = ['factor'+str(i+1) for i in range (10)]
-    df = dbr.get_daily_factor(stock_list,factor_list,start_date,end_date)
+    # 获取因子数据
+    factor_df = dbr.get_daily_factor(stock_list,factor_list,start_date,end_date)
+    # 获取股票return
+    stock_return_df = dbr.get_daily_quote(stock_list,start_date,end_date)
     for key in class_of_factor.keys():
-        resultp = SameClassFacAna.cor_test(class_of_factor, key, df, 60)
+        resultp = SameClassFacAna.cor_test(class_of_factor, key, factor_df, 60)
         results = SameClassFacAna.cor_factor(class_of_factor, key, resultp, 0.05)
         if(len(results)!=0):
             for result in results:
-                SameClassFacAna.factor_compose(result[0],result[1])
+                # 因子合成
+                SameClassFacAna.factor_compose(result[0],result[1],factor_df,stock_return_df,method='IC')
             

@@ -142,11 +142,11 @@ class GroupingMethod(object):
                 temp_df['weight'] = 1 / len(temp_df)
                 weight_series = temp_df['weight']
             elif weight_method == 'LVW':
-                weight_series = np.sqrt(temp_df['流通市值']) / \
-                                np.sqrt(temp_df['流通市值']).sum()
+                weight_series = np.sqrt(temp_df['circulating_market_cap']) / \
+                                np.sqrt(temp_df['circulating_market_cap']).sum()
             elif weight_method == 'VW':
-                weight_series = np.sqrt(temp_df['总市值']) / \
-                                np.sqrt(temp_df['总市值']).sum()
+                weight_series = np.sqrt(temp_df['market_cap']) / \
+                                np.sqrt(temp_df['market_cap']).sum()
             result_dict[group_label] = weight_series
         return result_dict
 
@@ -223,11 +223,11 @@ class GroupingMethod(object):
                 if weight_method == 'EW':
                     pos_df['weight'] = temp_df['权重'].sum() / length
                 elif weight_method == 'LVW':
-                    pos_df['weight'] = temp_df['权重'].sum() * np.sqrt(pos_df['流通市值']) / \
-                                       np.sqrt(pos_df['流通市值']).sum()
+                    pos_df['weight'] = temp_df['权重'].sum() * np.sqrt(pos_df['circulating_market_cap']) / \
+                                       np.sqrt(pos_df['circulating_market_cap']).sum()
                 elif weight_method == 'VW':
-                    pos_df['weight'] = temp_df['权重'].sum() * np.sqrt(pos_df['总市值']) / \
-                                       np.sqrt(pos_df['总市值']).sum()
+                    pos_df['weight'] = temp_df['权重'].sum() * np.sqrt(pos_df['market_cap']) / \
+                                       np.sqrt(pos_df['market_cap']).sum()
 
                 for group_label in group_list:
                     # 记录选中的股票和权重
@@ -246,11 +246,11 @@ class GroupingMethod(object):
                         temp_df1['weight'] = temp_df['权重'].sum() / len(temp_df1)
                         weight_series = temp_df1['weight']
                     elif weight_method == 'LVW':
-                        weight_series = temp_df['权重'].sum() * np.sqrt(temp_df1['流通市值']) / \
-                                        np.sqrt(temp_df1['流通市值']).sum()
+                        weight_series = temp_df['权重'].sum() * np.sqrt(temp_df1['circulating_market_cap']) / \
+                                        np.sqrt(temp_df1['circulating_market_cap']).sum()
                     elif weight_method == 'VW':
-                        weight_series = temp_df['权重'].sum() * np.sqrt(temp_df1['总市值']) / \
-                                        np.sqrt(temp_df1['总市值']).sum()
+                        weight_series = temp_df['权重'].sum() * np.sqrt(temp_df1['market_cap']) / \
+                                        np.sqrt(temp_df1['market_cap']).sum()
 
                     every_group_selected_stock_dict[group_label].update(weight_series.to_dict())
                     result_count_list.append(list(index) + [group_label, len(temp_df1)])
@@ -347,7 +347,7 @@ class WeightMethod(object):
         pass
 
     @classmethod
-    def Method_Label_Neutral(cls, universe_df, benchmark_df, label_name='申万一级行业', method='LVW'):
+    def Method_Label_Neutral(cls, universe_df, benchmark_df, label_name='industry_zx1_name', method='LVW'):
         # 此函数用于生成在某标签上的权重与基准一致（中性）的股票篮子series。同标签的默认总市值加权。常用于行业中性.
         result_series = pd.Series()
         #
@@ -366,14 +366,14 @@ class WeightMethod(object):
                         result_series.loc[code] = total_weight / n
                 elif method == 'VW':
                     # 总市值加权
-                    total_market_cap = np.sqrt(temp_df['总市值']).sum()
+                    total_market_cap = np.sqrt(temp_df['market_cap']).sum()
                     for code, row in temp_df.iterrows():
-                        result_series.loc[code] = total_weight * np.sqrt(row['总市值']) / total_market_cap
+                        result_series.loc[code] = total_weight * np.sqrt(row['market_cap']) / total_market_cap
                 elif method == 'LVW':
                     # 流通市值加权
-                    total_market_cap = np.sqrt(temp_df['流通市值']).sum()
+                    total_market_cap = np.sqrt(temp_df['circulating_market_cap']).sum()
                     for code, row in temp_df.iterrows():
-                        result_series.loc[code] = total_weight * np.sqrt(row['流通市值']) / total_market_cap
+                        result_series.loc[code] = total_weight * np.sqrt(row['circulating_market_cap']) / total_market_cap
 
                 else:
                     return None

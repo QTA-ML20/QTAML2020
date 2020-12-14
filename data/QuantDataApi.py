@@ -21,17 +21,9 @@ class QuantDataApi:
         if stock_code_list:
             factor_data = DatabaseReader.get_daily_factor(stock_code_list, factor_list,
                                                           date, date)
-            factor_data['ST'] = False
-            factor_data['停牌'] = False
-            factor_data['涨停'] = False
-            factor_data['跌停'] = False
-            factor_data['一字板'] = False
-            factor_data['上市日期'] = pd.to_datetime('19940927')
-            factor_data['申万一级行业'] = '申万计算机'
-            factor_data['申万二级行业'] = '申万计算机软件'
-            factor_data['上市天数'] = 6666
-            factor_data['流通市值'] = 1e9 * np.random.rand(len(factor_data))
-            factor_data['总市值'] = 1e9 * np.random.rand(len(factor_data))
+            stock_info = DatabaseReader.get_stock_info(stock_code_list, date, date)
+
+            factor_data = pd.merge(factor_data, stock_info, on=['datetime', 'code'])
             factor_data.set_index('code', inplace=True)
             return factor_data
     
@@ -45,14 +37,16 @@ class QuantDataApi:
         """
         # 根据版块名称，获取对应的 指数代码
         if bk in ["沪深300", "hs300", "300", "HS", "000300.SH"]:
-            index_code = "000300.XSHG"
+            df = DatabaseReader.get_index_weight("000300.SH", start_date=date, end_date=date)
             
         elif bk in ["中证500", "zz500", "500", "000905.SH"]:
-            index_code = "000905.XSHG"
+            df = DatabaseReader.get_index_weight("000905.SH", start_date=date, end_date=date)
 
+        elif bk == '全A':
+            df = DatabaseReader.get_stock_info(None, start_date=date, end_date=date)
         else:
             raise ValueError("输入的版块名称错误 ：{0}".format(bk))
-        df = DatabaseReader.get_index_weight(index_code, start_date=date, end_date=date)
+
         return list(df['code'])
 
     @classmethod
@@ -76,20 +70,10 @@ class QuantDataApi:
                                                           factor_list=factor_list,
                                                           start_date=date,
                                                           end_date=date)
+            stock_info = DatabaseReader.get_stock_info(weight_data.index.tolist(), date, date)
+            factor_data = pd.merge(factor_data, stock_info, on=['datetime', 'code'])
             factor_data.set_index('code', inplace=True)
             pd_data = pd.concat([weight_data, factor_data], axis=1, sort=False)
-            if 'ST' not in pd_data.columns:
-                pd_data['ST'] = False
-                pd_data['停牌'] = False
-                pd_data['涨停'] = False
-                pd_data['跌停'] = False
-                pd_data['一字板'] = False
-                pd_data['上市日期'] = pd.to_datetime('19940927')
-                pd_data['申万一级行业'] = '申万计算机'
-                pd_data['申万二级行业'] = '申万计算机软件'
-                pd_data['上市天数'] = 6666
-                pd_data['流通市值'] = 1e9 * np.random.rand(len(factor_data))
-                pd_data['总市值'] = 1e9 * np.random.rand(len(factor_data))
             return pd_data
     
     @classmethod
@@ -116,21 +100,11 @@ class QuantDataApi:
                                                           factor_list=factor_list,
                                                           start_date=date,
                                                           end_date=date)
+                stock_info = DatabaseReader.get_stock_info(weight_data.index.tolist(), date, date)
+                factor_data = pd.merge(factor_data, stock_info, on=['datetime', 'code'])
                 factor_data.set_index('code', inplace=True)
 
                 pd_data = pd.concat([weight_data, factor_data], axis=1, sort=False)
-                if 'ST' not in pd_data.columns:
-                    pd_data['ST'] = False
-                    pd_data['停牌'] = False
-                    pd_data['涨停'] = False
-                    pd_data['跌停'] = False
-                    pd_data['一字板'] = False
-                    pd_data['上市日期'] = pd.to_datetime('19940927')
-                    pd_data['申万一级行业'] = '申万计算机'
-                    pd_data['申万二级行业'] = '申万计算机软件'
-                    pd_data['上市天数'] = 6666
-                    pd_data['流通市值'] = 1e9 * np.random.rand(len(factor_data))
-                    pd_data['总市值'] = 1e9 * np.random.rand(len(factor_data))
                 result[pd.to_datetime(date).strftime("%Y-%m-%d")] = pd_data
             else:
                 result[pd.to_datetime(date).strftime("%Y-%m-%d")] = None

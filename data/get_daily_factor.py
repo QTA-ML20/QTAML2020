@@ -61,12 +61,15 @@ for i,date in enumerate(to_get_date_list):
     stock_info = stock_info[stock_info['listed_date']<date]
     stock_list = list(stock_info['code'])
     jq_stock_list = [wind2jq(x) for x in stock_list]
+    print(f'获取{len(jq_stock_list)}只股票的数据')
     df = get_fundamentals(query(
             valuation
         ).filter(
             # 这里不能使用 in 操作, 要使用in_()函数
+            
             valuation.code.in_(jq_stock_list)
         ), date=date)
+    print(f'返回{len(df)}只股票的数据')
     del df['id']
     del df['day']
     df['datetime'] = date

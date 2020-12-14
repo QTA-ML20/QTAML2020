@@ -149,7 +149,7 @@ class FactorAnalyserBase(object):
     start_date = None  # 回测开始日期
     end_date = None  # 回测结束日期
     benchmark_id = None  # 基准ID
-    universe = None  # 选股股票池，可选'全A'、'沪深300'、'中证500'、'上证50'、'中证800'、申万各一级行业等
+    universe = None  # 选股股票池，可选'全A'、'沪深300'、'中证500'
     factor_list = None  # 用到的因子名称
     cost_rate = None  # 回测时单边交易费率
     change_date_method = None  # 换仓日期模式，月初换、月末换、自定义。
@@ -226,6 +226,10 @@ class FactorAnalyserBase(object):
             refresh_date_list = self.change_date_list
             # recalculate_date选在每个refresh_day的前一天
             recalculate_date_list = [all_trade_days[all_trade_days<x][-1] for x in refresh_date_list]
+        elif self.change_date_method == '每日换':
+            in_period_days = all_trade_days[(all_trade_days >= self.start_date) & (all_trade_days <= self.end_date)]
+            refresh_date_list = list(in_period_days[1:])
+            recalculate_date_list = list(in_period_days[:-1])
         else:
             self.log('参数设定错误，不存在这种换仓日期模式')
             return
@@ -268,13 +272,13 @@ class FactorAnalyserBase(object):
         """
         pass
 
-    def grouping_test(self, group_num, control_dict, group_by_benchmark=False, weight_method='LVW', max_stock_num=200):
+    def grouping_test(self, group_num, control_dict, group_by_benchmark=False, weight_method='LVW', max_stock_num=30):
         """
         分组收益分析，基于Score分组，由大到小分别是Q1、Q2...Q group_num，快速回测
         :param group_num: 分组数量
         :param control_dict: 需要控制的因子，若不为空必须是OrderDict，需要控制的因子名称为key，分组数量为value，
                               非数字型因子，如行业分类，则value为空字符串 ： ""。将按顺序依次控制分组。
-                              例如：OrderedDict([('申万一级行业', ''), ('流通市值', 3)])
+                              例如：OrderedDict([('industry_zx1_name', ''), ('circulating_market_cap', 3)])
         :param group_by_benchmark: 是否按基准的因子去划分
         :param weight_method:配权方法，目前只支持EW、LVW和VW，分别是等权、流通市值平方根加权，总市值平方根加权
         :param max_stock_num 每个分组网格内最大的持股数
@@ -298,7 +302,7 @@ class FactorAnalyserBase(object):
                     # 把权重添加到raw和processed的df里，列名为group_label：Q1、Q2.....
                     self.processed_universe_df_dict[date].loc[weight_series.index, group_label] = weight_series
                     self.raw_universe_df_dict[date].loc[weight_series.index, group_label] = weight_series
-                result_count_series_dict[date] = df.groupby('grouping')['TSL代码'].count().sort_index()
+                result_count_series_dict[date] = df.groupby('grouping')['code'].count().sort_index()
 
         # 控制变量
         else:
@@ -341,7 +345,7 @@ class FactorAnalyserBase(object):
                                                                   (self.all_trade_days <= self.end_date)])
         # 下面这几个都是用来储存回测结果的空变量。具体意义可以看GroupingTestResultAnalyser的属性定义。
         ic_series = pd.Series(index=self.refresh_date_list)
-        daily_ic_df = pd.DataFrame(index=self.refresh_date_list, columns=range(1, 61))
+        daily_ic_df = pd.DataFrame(index=self.refresh_date_list, columns=range(1, 21))
         half_time_period_series = pd.Series(index=self.refresh_date_list)
         last_period_weight_dict = dict()
         turnover_rate_df = pd.DataFrame(columns=group_list, index=self.refresh_date_list)
@@ -357,14 +361,14 @@ class FactorAnalyserBase(object):
             all_pos_df = self.processed_universe_df_dict[recalculate_date]
             benchmark_df = self.benchmark_weight_df_dict[recalculate_date]
             # 一次性取出来所有组里选到的股票和基准股票的收益率,假设在refresh_date的收盘时换仓,所以取ret数据时start_date要+1日
-            # 此外为了计算因子半衰期，start_date~end_date要取满60天。
+            # 此外为了计算因子半衰期，start_date~end_date要取满40天。
             all_stock_list = list(set(all_pos_df[group_list].dropna(how='all').index) | set(benchmark_df.index)) + \
                                [self.benchmark_id]
-            trade_day_after_59 = self.all_trade_days[min(self.all_trade_days.get_loc(refresh_date)+59,
+            trade_day_after_39 = self.all_trade_days[min(self.all_trade_days.get_loc(refresh_date)+39,
                                                          len(self.all_trade_days))]
             all_stock_ret_df = WXDBReader.get_period_quote_timeseries(all_stock_list, refresh_date+timedelta(days=1),
                                                                       max(next_refresh_date,
-                                                                          trade_day_after_59))
+                                                                          trade_day_after_39))
             # 基准指数的各股票本期收益率序列
             benchmark_ret_df = all_stock_ret_df[benchmark_df.index]
             benchmark_ret_df = benchmark_ret_df[(benchmark_ret_df.index > refresh_date) &
@@ -378,7 +382,7 @@ class FactorAnalyserBase(object):
                 ret_df = all_stock_ret_df[stock_list]
 
                 # ret_df = all_stock_ret_df[pos_df.index]
-                # 前面的收益率是取了至少60天的，这里我们要开始计算净值，所以只取两个持有期中间的日期。
+                # 前面的收益率是取了至少40天的，这里我们要开始计算净值，所以只取两个持有期中间的日期。
                 ret_df = ret_df[(ret_df.index > refresh_date) & (ret_df.index <= next_refresh_date)]
                 pos_ret_series = (pos_df[group_label] * ret_df).sum(axis=1)  # 组合的每日收益率
 
@@ -410,14 +414,14 @@ class FactorAnalyserBase(object):
                     def func(series):
                         return series / series.sum()
 
-                    pos_df['adj_weight'] = pos_df.groupby('申万一级行业')['Q1'].apply(func)
-                    benchmark_df['adj_weight'] = benchmark_df.groupby('申万一级行业')['权重'].apply(func)
+                    pos_df['adj_weight'] = pos_df.groupby('industry_zx1_name')['Q1'].apply(func)
+                    benchmark_df['adj_weight'] = benchmark_df.groupby('industry_zx1_name')['权重'].apply(func)
                     # 每只股票权重乘以日涨跌幅，并按持有期累计，得出持有期累计盈利率。
                     pos_df['pnl_rate'] = ((1+pos_df['adj_weight'] * ret_df).cumprod()-1).iloc[-1, :]
                     benchmark_df['pnl_rate'] = ((1+benchmark_df['adj_weight'] * benchmark_ret_df).cumprod()-1).iloc[-1, :]
                     # 按行业加总，放在一个dataframe里对齐
-                    aligned_df = pd.concat([pos_df.groupby('申万一级行业')['pnl_rate'].sum(),
-                                            benchmark_df.groupby('申万一级行业')['pnl_rate'].sum()],
+                    aligned_df = pd.concat([pos_df.groupby('industry_zx1_name')['pnl_rate'].sum(),
+                                            benchmark_df.groupby('industry_zx1_name')['pnl_rate'].sum()],
                                            axis=1, sort=True)
                     aligned_df['超额收益率'] = aligned_df.iloc[:, 0] - aligned_df.iloc[:, 1]
                     industry_alpha_list.append(aligned_df['超额收益率'])
@@ -430,11 +434,11 @@ class FactorAnalyserBase(object):
             # 算持有周期的IC和回归分析，不分组
             period_ret_series = ((1+all_stock_ret_df).cumprod()-1).iloc[-1, :]  # 所有股票区间收益率Series
             period_ret_series.rename('next_period_ret', inplace=True)
-            aligned_df = pd.concat([all_pos_df[['流通市值', '申万一级行业', 'score']], period_ret_series], axis=1, sort=True).dropna()
+            aligned_df = pd.concat([all_pos_df[['circulating_market_cap', 'industry_zx1_name', 'score']], period_ret_series], axis=1, sort=True).dropna()
             # IC
             ic_series.loc[refresh_date] = st.spearmanr(aligned_df['score'], aligned_df['next_period_ret']).correlation
             # 回归
-            dummied_X_df = pd.get_dummies(aligned_df[['score', '申万一级行业']])  # 把申万一级行业展开为哑变量
+            dummied_X_df = pd.get_dummies(aligned_df[['score', 'industry_zx1_name']])  # 把申万一级行业展开为哑变量
             dummied_X_df['const'] = 1.  # 回归的常数项
             y = np.array(aligned_df['next_period_ret'])
             X = np.array(np.array(dummied_X_df))
@@ -454,10 +458,14 @@ class FactorAnalyserBase(object):
                 aligned_df = pd.concat([all_pos_df['score'], all_stock_ret_df.iloc[j, :]], axis=1, sort=True).dropna()
                 daily_ic_df.loc[refresh_date, j+1] = st.spearmanr(aligned_df.iloc[:, 0], aligned_df.iloc[:, 1]).correlation
             half_time_period_series.loc[refresh_date] = FactorAnalyserBase.cal_half_time_period_fun(daily_ic_df.loc[refresh_date])
+            print(recalculate_date.strftime("%Y-%m-%d") + "Done!")
 
         all_group_ret_df.iloc[0, :] = 0.
         industry_alpha_df = pd.concat(industry_alpha_list, axis=1, sort=False)
-        industry_alpha_df.columns = self.recalculate_date_list
+        if len(industry_alpha_list) == len(self.recalculate_date_list):
+            industry_alpha_df.columns = self.recalculate_date_list
+        else:
+            industry_alpha_df.columns = self.recalculate_date_list[:-1]
         result_dict = {'all_group_ret_df': all_group_ret_df, 'ic_series': ic_series,
                        'turnover_rate_df': turnover_rate_df, 'result_count_series_dict': result_count_series_dict,
                        'half_time_period_series': half_time_period_series, 'daily_ic_df': daily_ic_df,
@@ -500,6 +508,9 @@ class RegressionMultipleFactorAnalyser(FactorAnalyserBase):
 
 
 if __name__ == '__main__':
+    import datetime
+
+
     class PETTM_PBTTM_Strategy(FactorAnalyserBase):
         def __init__(self, start_date, end_date, benchmark_id, universe, factor_list, props):
             super(PETTM_PBTTM_Strategy, self).__init__(start_date, end_date, benchmark_id,
@@ -507,18 +518,19 @@ if __name__ == '__main__':
 
         def filter(self):
             for date, df in self.raw_universe_df_dict.items():
+                df['上市天数'] = (date-df['listed_date']).dt.days
                 self.set_filter(
-                    (df['PE-TTM'] > 0) & (df['PB-TTM'] > 0) & (~df['ST']) & (df['上市天数'] > 365) & (~df['停牌']), date)
+                    (df['pe_ratio'] > 0) & (df['pb_ratio'] > 0) & (~df['is_st']) & (df['上市天数'] > 365) , date)
 
         def rate_stock(self):
             """
             选股逻辑，去极值、中性化、标准化等。需要用户自己定义
             """
             for date, df in self.processed_universe_df_dict.items():
-                df['PE-TTM'] = StandardizeMethod.Method_Z_Score(DeExtremeMethod.Method_Median(1 / df['PE-TTM']))
-                df['PB-TTM'] = StandardizeMethod.Method_Z_Score(DeExtremeMethod.Method_Median(1 / df['PB-TTM']))
+                df['pe_ratio'] = StandardizeMethod.Method_Z_Score(DeExtremeMethod.Method_Median(1 / df['pe_ratio']))
+                df['pb_ratio'] = StandardizeMethod.Method_Z_Score(DeExtremeMethod.Method_Median(1 / df['pb_ratio']))
 
-                score = 0.8 * df['PE-TTM'] + 0.2 * df['PB-TTM']
+                score = 0.8 * df['pe_ratio'] + 0.2 * df['pb_ratio']
                 # 中性化
                 #             df['对数流通市值'] = StandardizeMethod.Method_Z_Score(DeExtremeMethod.Method_Median(np.log(df['流通市值'])))
                 #             score = NeutralizeMethod.Method_Residual(score, df[['对数流通市值', '申万一级行业']])
@@ -526,17 +538,17 @@ if __name__ == '__main__':
                 self.set_score(score, date)
 
 
-    fab = PETTM_PBTTM_Strategy(pd.to_datetime('2017-01-01'), pd.to_datetime('2018-11-30'), '沪深300', '沪深300',
-                               ['PE-TTM', 'PB-TTM'], {})
+    fab = PETTM_PBTTM_Strategy(pd.to_datetime('2020-02-01'), pd.to_datetime('2020-02-10'), '000300.SH', '沪深300',
+                               ['pe_ratio', 'pb_ratio', 'circulating_market_cap', "market_cap"], {"换仓日期模式": "每日换"})
     fab.prepare_data()
     fab.filter()
     fab.rate_stock()
-    import datetime
-    t1 = datetime.datetime.now()
-    result = fab.grouping_test(5, OrderedDict([('申万一级行业', ''), ('流通市值', 5)]),
-                               group_by_benchmark=False, weight_method='VW')
-    t2 = datetime.datetime.now()
-    print(t2-t1)
+
+    start_ = datetime.datetime.now()
+    result = fab.grouping_test(5, OrderedDict([('industry_zx1_name', ''), ('circulating_market_cap', 5)]),
+                               group_by_benchmark=True, weight_method='LVW')
+    print(datetime.datetime.now() - start_)
+    # result = fab.grouping_test(10, {}, weight_method='VW')
 
     # result = fab.grouping_test(5, {}, weight_method='EW')
     # print(result.__dict__)
